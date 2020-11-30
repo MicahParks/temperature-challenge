@@ -53,8 +53,11 @@ func main() {
 		logger.Fatalf("Failed to get the 100 largest US cities.\nError: %s", err.Error())
 	}
 
+	// Create a temperature sum and count of how many temperatures are from that sum.
+	tempCount := float64(0)
+	tempSum := float64(0)
+
 	// Iterate through the coordinates and get their temperatures.
-	temperatureSum := float64(0)
 	for _, coord := range coords {
 
 		// Get the Where On Earth ID of the city.
@@ -66,15 +69,20 @@ func main() {
 		// Get the temperature of the city.
 		var temperature float64
 		if temperature, err = woeIDTemperature(httpClient, temperatureURLTemplate, woeID); err != nil {
-			logger.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
+			if errors.Is(err, ErrNoTemperature) {
+				logger.Printf("Failed to get temperature for WOE ID: %d.", woeID)
+			} else {
+				logger.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
+			}
 		}
 
 		// Add to the total temperature sum.
-		temperatureSum += temperature
+		tempCount += 1
+		tempSum += temperature
 	}
 
 	// Divide by the number of temperature summed and print the desired number.
-	logger.Printf("The average temperature in the 100 most populous US cities is: %.2f", temperatureSum/100)
+	logger.Printf("The average temperature in the 100 most populous US cities is: %.2f", tempSum/tempCount)
 }
 func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
