@@ -14,9 +14,11 @@ type Coordinate struct {
 	Longitude float64
 }
 
-const weatherCityUrlTemplate string = "https://www.metaweather.com/api//location/search/?lattlong=%f,%f"
-const weatherUrlTemplate string = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
-const cityUrls string = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=geonames-all-cities-with-a-population-1000&q=&refine.country=United+States&rows=100"
+const (
+	cityUrls               string = "https://public.opendatasoft.com/api/records/1.0/search/?dataset=geonames-all-cities-with-a-population-1000&q=&refine.country=United+States&rows=100"
+	weatherCityURLTemplate string = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
+	weatherURLTemplate     string = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
+)
 
 func main() {
 
@@ -41,14 +43,14 @@ func main() {
 }
 
 func getCurrentTemperatureForCoordinates(coord Coordinate) float64 {
-	weatherCityData, err := doGetRequest(fmt.Sprintf(weatherCityUrlTemplate, coord.Latitude, coord.Longitude))
+	weatherCityData, err := doGetRequest(fmt.Sprintf(weatherCityURLTemplate, coord.Latitude, coord.Longitude))
 	if err != nil {
 		panic(err)
 	}
 
 	weatherCitiesParsed, _ := gabs.ParseJSON(weatherCityData)
 	weatherCityWoeids := weatherCitiesParsed.Path("woeid").Data().([]interface{})
-	weatherURLFormatted := fmt.Sprintf(weatherUrlTemplate, int64(weatherCityWoeids[0].(float64)), time.Now().Year(),
+	weatherURLFormatted := fmt.Sprintf(weatherURLTemplate, int64(weatherCityWoeids[0].(float64)), time.Now().Year(),
 		int(time.Now().Month()), time.Now().Day())
 	weatherData, err := doGetRequest(weatherURLFormatted)
 	if err != nil {
