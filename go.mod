@@ -2,4 +2,4 @@ module thycotic
 
 go 1.15
 
-require github.com/Jeffail/gabs v1.4.0
+require github.com/tidwall/gjson v1.6.3
