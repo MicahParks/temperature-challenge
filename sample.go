@@ -54,9 +54,26 @@ func main() {
 		logger.Fatalf("Failed to get the 100 largest US cities.\nError: %s", err.Error())
 	}
 
+	// Iterate through the coordinates and get their temperatures.
+	temperatureSum := float64(0)
 	for _, coord := range coords {
 
+		// Get the Where On Earth ID of the city.
+		var woeID int64
+		if woeID, err = coordinateWOEID(coord, httpClient, woeIDURLTemplate); err != nil {
+			log.Fatalf("Failed to get a WOE ID.\nError: %s", err.Error())
+		}
+
+		// Get the temperature of the city.
+		var temperature float64
+		if temperature, err = woeIDTemperature(httpClient, temperatureURLTemplate, woeID); err != nil {
+			log.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
+		}
+
+		temperatureSum += temperature
 	}
+
+	println(temperatureSum / 100)
 }
 func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
