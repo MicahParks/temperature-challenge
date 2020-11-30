@@ -60,19 +60,21 @@ func main() {
 		// Get the Where On Earth ID of the city.
 		var woeID int64
 		if woeID, err = coordinateWOEID(coord, httpClient, woeIDURLTemplate); err != nil {
-			log.Fatalf("Failed to get a WOE ID.\nError: %s", err.Error())
+			logger.Fatalf("Failed to get a WOE ID.\nError: %s", err.Error())
 		}
 
 		// Get the temperature of the city.
 		var temperature float64
 		if temperature, err = woeIDTemperature(httpClient, temperatureURLTemplate, woeID); err != nil {
-			log.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
+			logger.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
 		}
 
+		// Add to the total temperature sum.
 		temperatureSum += temperature
 	}
 
-	println(temperatureSum / 100)
+	// Divide by the number of temperature summed and print the desired number.
+	logger.Printf("The average temperature in the 100 most populous US cities is: %.2f", temperatureSum/100)
 }
 func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
