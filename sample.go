@@ -15,8 +15,8 @@ import (
 
 const (
 	cityURL                = "https://public.opendatasoft.com/api/records/1.0/search/?rows=100&disjunctive.country=true&refine.country=United+States&sort=population&start=0&fields=ascii_name,population,latitude,longitude&dataset=geonames-all-cities-with-a-population-1000&timezone=UTC&lang=en"
-	weatherCityURLTemplate = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
-	weatherURLTemplate     = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
+	woeIDURLTemplate       = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
+	temperatureURLTemplate = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
 )
 
 var (
@@ -24,6 +24,9 @@ var (
 	// ErrNot100Cities indicates the HTTP request to get the most populous 100 cities in the US did not include at least
 	// 100 cities.
 	ErrNot100Cities = errors.New("100 cities were not returned by the HTTP response")
+
+	// ErrNoTemperature indicates the HTTP request to get a city's temperature did not include a temperature.
+	ErrNoTemperature = errors.New("a temperature reading was not returned by the HTTP response")
 
 	// ErrNoWoe indicates the HTTP request to get a city's WOE ID did not include a WOE ID.
 	ErrNoWoe = errors.New("a Where On Earth ID was not returned by the HTTP response")
@@ -36,8 +39,8 @@ type coordinates struct {
 
 func main() {
 
-	// Create a logger.
-	logger := log.New(os.Stdout, "", log.LstdFlags)
+	// Create a logger that will behave as an async safe printer, but could be updated for later.
+	logger := log.New(os.Stdout, "", 0)
 
 	// Create an HTTP client that will be reused for requests.
 	//
@@ -51,14 +54,15 @@ func main() {
 		logger.Fatalf("Failed to get the 100 largest US cities.\nError: %s", err.Error())
 	}
 
-	//fmt.Println(getCurrentTemperatureForCoordinates(cityCoordinates[0]))
-}
+	for _, coord := range coords {
 
-func coordinateTemperature(coords coordinates, httpClient *http.Client, woeIDURL string) (temperature float64, err error) {
+	}
+}
+func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
 	// Perform the request to get the Where On Earth (woe) ID.
 	var resp *http.Response
-	if resp, err = httpClient.Get(woeIDURL); err != nil {
+	if resp, err = httpClient.Get(fmt.Sprintf(urlTemplate, coords.Latitude, coords.Longitude)); err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close() // Ignore this error, if any.
@@ -69,12 +73,13 @@ func coordinateTemperature(coords coordinates, httpClient *http.Client, woeIDURL
 		return 0, err
 	}
 
-	// Get the WOE ID of the closest city.
-	woeID := gjson.GetBytes(respJSON, "0.woeid").String()
-	if woeID == "" {
+	// Get the WOE ID of the closest city (first index).
+	woeID = gjson.GetBytes(respJSON, "0.woeid").Int()
+	if woeID == 0 {
 		return 0, ErrNoWoe
 	}
 
+	return woeID, nil
 }
 
 func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [100]coordinates, err error) {
@@ -122,20 +127,29 @@ func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [
 	return coords, nil
 }
 
-func getCurrentTemperatureForCoordinates(coord Coordinate) float64 {
-	weatherCityData, err := doGetRequest(fmt.Sprintf(weatherCityURLTemplate, coord.Latitude, coord.Longitude))
-	if err != nil {
-		panic(err)
+func woeIDTemperature(httpClient *http.Client, urlTemplate string, woeID int64) (temperature float64, err error) {
+
+	// Get the current date from the OS.
+	year, month, day := time.Now().Date()
+
+	// Perform the request to get temperature readings.
+	var resp *http.Response
+	if resp, err = httpClient.Get(fmt.Sprintf(urlTemplate, woeID, year, month, day)); err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close() // Ignore this error, if any.
+
+	// Read the body of the response.
+	var respJSON []byte
+	if respJSON, err = ioutil.ReadAll(resp.Body); err != nil {
+		return 0, err
 	}
 
-	weatherCitiesParsed, _ := gabs.ParseJSON(weatherCityData)
-	weatherCityWoeids := weatherCitiesParsed.Path("woeid").Data().([]interface{})
-	weatherURLFormatted := fmt.Sprintf(weatherURLTemplate, int64(weatherCityWoeids[0].(float64)), time.Now().Year(),
-		int(time.Now().Month()), time.Now().Day())
-	weatherData, err := doGetRequest(weatherURLFormatted)
-	if err != nil {
-		panic(err)
+	// Get the most recent temperature reading (first index).
+	temperature = gjson.GetBytes(respJSON, "0.the_temp").Float()
+	if temperature == 0 {
+		return 0, ErrNoTemperature
 	}
-	weatherDataParsed, _ := gabs.ParseJSON(weatherData)
-	return weatherDataParsed.Path("the_temp").Data().([]interface{})[0].(float64)
+
+	return temperature, nil
 }
