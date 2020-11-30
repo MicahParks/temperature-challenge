@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +13,7 @@ import (
 )
 
 const (
-	cityURL                = "https://public.opendatasoft.com/api/records/1.0/search/?rows=100&disjunctive.country=true&refine.country=United+States&sort=population&start=0&fields=ascii_name,population,latitude,longitude&dataset=geonames-all-cities-with-a-population-1000&timezone=UTC&lang=en"
+	cityURL                = "https://public.opendatasoft.com/api/records/1.0/search/?rows=100&disjunctive.country=true&refine.country=United+States&sort=population&start=0&fields=coordinates&dataset=geonames-all-cities-with-a-population-1000&timezone=UTC&lang=en"
 	woeIDURLTemplate       = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
 	temperatureURLTemplate = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
 )
@@ -115,7 +114,7 @@ func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [
 	}
 
 	// Create a gjson.Result that will let us iterate through the coords returned in the response.
-	records := gjson.GetBytes(respJSON, "records.#.fields")
+	records := gjson.GetBytes(respJSON, "records.#.fields.coordinates")
 
 	// Declare these variables in the outer scope so that the index can be referenced once the loop is completed.
 	var index int
@@ -125,11 +124,9 @@ func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [
 	for index, cityJSON = range records.Array() {
 
 		// Create the current coordinates.
-		currentCords := &coordinates{}
-
-		// Turn the JSON into a Go structure.
-		if err = json.Unmarshal([]byte(cityJSON.Raw), currentCords); err != nil {
-			return [100]coordinates{}, err
+		currentCords := &coordinates{
+			Latitude:  cityJSON.Get("0").Float(),
+			Longitude: cityJSON.Get("1").Float(),
 		}
 
 		// Put the coords into the array of coords.
