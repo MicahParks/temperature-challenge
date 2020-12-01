@@ -13,8 +13,16 @@ import (
 )
 
 const (
-	cityURL                = "https://public.opendatasoft.com/api/records/1.0/search/?rows=100&disjunctive.country=true&refine.country=United+States&sort=population&start=0&fields=coordinates&dataset=geonames-all-cities-with-a-population-1000&timezone=UTC&lang=en"
-	woeIDURLTemplate       = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
+
+	// cityURL is the URL with the query to the most populous US cities.
+	//
+	// I modified this URL a bit to add sorting and only the fields I cared about. Let the server do all the work!
+	cityURL = "https://public.opendatasoft.com/api/records/1.0/search/?rows=100&disjunctive.country=true&refine.country=United+States&sort=population&start=0&fields=coordinates&dataset=geonames-all-cities-with-a-population-1000&timezone=UTC&lang=en"
+
+	// The URL template that will turn a pair of coordinates into a Where On Earth (WOE) ID.
+	woeIDURLTemplate = "https://www.metaweather.com/api/location/search/?lattlong=%f,%f"
+
+	// The URL template that will turn a WOE ID and date into a temperature reading.
 	temperatureURLTemplate = "https://www.metaweather.com/api/location/%d/%d/%d/%d"
 )
 
@@ -72,7 +80,7 @@ func main() {
 		var temperature float64
 		if temperature, err = woeIDTemperature(httpClient, temperatureURLTemplate, woeID); err != nil {
 			if errors.Is(err, ErrNoTemperature) {
-				logger.Printf("Failed to get temperature for WOE ID: %d.", woeID)
+				logger.Printf("Failed to get temperature for WOE ID: %d. Continuing anyways.", woeID)
 			} else {
 				logger.Fatalf("Failed to get temperature from WOE ID.\nError: %s", err.Error())
 			}
@@ -84,8 +92,10 @@ func main() {
 	}
 
 	// Divide by the number of temperature summed and print the desired number.
-	logger.Printf("The average temperature in the %d most populous US cities is: %.2f", int(tempCount), tempSum/tempCount)
+	logger.Printf("The average temperature in the %d most populous US cities is: %.2fF", int(tempCount), tempSum/tempCount)
 }
+
+// coordinateWOEID turns a pair of coordinates into a WOE ID.
 func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
 	// Perform the request to get the Where On Earth (woe) ID.
@@ -110,6 +120,7 @@ func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate st
 	return woeID, nil
 }
 
+// largest100USCities gets the coordinates of the most populous 100 US cities.
 func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [100]coordinates, err error) {
 
 	// Perform the HTTP request given the HTTP client.
@@ -153,6 +164,7 @@ func largest100USCities(httpClient *http.Client, urlWithParams string) (coords [
 	return coords, nil
 }
 
+// woeIDTemperature turns a WOE ID into a temperature.
 func woeIDTemperature(httpClient *http.Client, urlTemplate string, woeID int64) (temperature float64, err error) {
 
 	// Get the current date from the OS.
