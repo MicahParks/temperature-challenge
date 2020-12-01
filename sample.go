@@ -82,7 +82,7 @@ func main() {
 	}
 
 	// Divide by the number of temperature summed and print the desired number.
-	logger.Printf("The average temperature in the 100 most populous US cities is: %.2f", tempSum/tempCount)
+	logger.Printf("The average temperature in the %d most populous US cities is: %.2f", int(tempCount), tempSum/tempCount)
 }
 func coordinateWOEID(coords coordinates, httpClient *http.Client, urlTemplate string) (woeID int64, err error) {
 
