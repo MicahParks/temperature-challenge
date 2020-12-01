@@ -38,7 +38,9 @@ type coordinates struct {
 
 func main() {
 
-	// Create a logger that will behave as an async safe printer, but could be updated for later.
+	// Create a logger.
+	//
+	// It will behave as an async safe printer, but could be updated for later.
 	logger := log.New(os.Stdout, "", 0)
 
 	// Create an HTTP client that will be reused for requests.
