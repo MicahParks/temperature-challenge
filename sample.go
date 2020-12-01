@@ -68,6 +68,9 @@ func main() {
 	tempSum := float64(0)
 
 	// Iterate through the coordinates and get their temperatures.
+	//
+	// It'd be pretty easy to make this faster by working asynchronously. I'd use a *sync.Mutex to lock the float64's
+	// above and put what's in this loop into some different goroutines. Ask me to do it if you want!
 	for _, coord := range coords {
 
 		// Get the Where On Earth ID of the city.
